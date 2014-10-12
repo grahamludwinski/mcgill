@@ -1,5 +1,6 @@
+import java.util.concurrent.locks.ReentrantLock;
 
-public class Cell {
+public class Cell extends ReentrantLock {
 	private int x;
 	private int y;
 	

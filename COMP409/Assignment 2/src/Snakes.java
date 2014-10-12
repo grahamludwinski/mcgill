@@ -1,6 +1,7 @@
-import java.awt.Point;
+import java.awt.Color;
+import java.awt.Frame;
+import java.awt.Graphics;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Random;
 import java.util.Set;
 
@@ -10,14 +11,12 @@ public class Snakes implements Runnable {
 	private static final int SOUTH = 2;
 	private static final int WEST  = 3;
 	
-	private int numSnakes;
 	private int snakeLength;
 	private int width;
 	private int height;
 	private int moveTime;
 	private SnakeThread[] snakes;
 	private Cell[][] grid;
-	private int stuckSnakes;
 	private static final Random RANDOM = new Random();
 	
 	public static void main(String[] args) {
@@ -42,7 +41,6 @@ public class Snakes implements Runnable {
 	}
 	
 	public Snakes(int p, int n, int m, int t) {
-		this.numSnakes = p;
 		this.snakeLength = n;
 		this.width = m;
 		this.height = m;
@@ -51,15 +49,28 @@ public class Snakes implements Runnable {
 		this.grid = new Cell[m][m];
 		this.snakes = new SnakeThread[p];
 		
-		this.stuckSnakes = 0;
+		for(int i=0; i<m; i++) {
+			for(int j=0; j<m; j++) {
+				grid[j][i] = new Cell(j, i);
+			}
+		}
 	}
 	
 	@Override
 	public void run() {
 		//create threads
-		createThreads();
+		for (int i=0; i< snakes.length; i++) {
+			snakes[i] = new SnakeThread(snakeLength, new Cell(0,i));
+		}
 		
-		printGrid(grid);
+		PaintingAndStroking paint = new PaintingAndStroking();
+		paint.repaint();
+		try {
+			Thread.sleep(10000);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		
 		//start threads running
 		for(SnakeThread thread : snakes) {
@@ -67,14 +78,15 @@ public class Snakes implements Runnable {
 		}
 		
 		//wait for threads to finish
+		
 		long startTime = System.currentTimeMillis();
 		while (System.currentTimeMillis() < startTime + 60000) {
 		    try {
 		    	if (allSnakesAreStuck()) {
 		    		startTime-= 60000;
 		    	}
+		    	paint.repaint();
 				Thread.sleep(moveTime);
-				printGrid(grid);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -107,25 +119,6 @@ public class Snakes implements Runnable {
 		
 		return allAreStuck;
 	}
-	public void printGrid(Cell[][] grid) {
-		System.out.println("\n");
-		for(int y=0; y<grid[0].length; y++) {
-			for(int x=0; x<grid.length; x++) {
-				if(grid[x][y] == null) {
-					System.out.print("+");
-				} else {
-					System.out.print("o");
-				}
-				System.out.print(" ");
-			}
-			System.out.println();
-		}
-	}
-	public void createThreads() {
-		for (int i=0; i< snakes.length; i++) {
-			snakes[i] = new SnakeThread(snakeLength, new Cell(0,i));
-		}
-	}
 	
 	public Set<Integer> newDirections() {
 		Set<Integer> directions = new HashSet<Integer>();
@@ -141,18 +134,28 @@ public class Snakes implements Runnable {
 		private Cell[] cells;
 		private int numMovements;
 		public boolean isStuck = false;
+		public Color color;
+		
 		public SnakeThread(int length, Cell startPosition) {
 			numMovements = 0;
 			cells = new Cell[length];
 			for(int i=0; i<length; i++) {
-				Cell cell = new Cell(startPosition.getX()+i, startPosition.getY());
-				grid[cell.getX()][cell.getY()] = cell;
-				cells[i] = cell;
+				//grid[startPosition.getX()+i][startPosition.getY()].lock();
+				cells[i] = grid[startPosition.getX()+i][startPosition.getY()];
 			}
+			
+			color = new Color(RANDOM.nextInt(256), RANDOM.nextInt(256), RANDOM.nextInt(256));
 		}
 		
 		@Override
 		public void run() {
+			for(Cell cell : cells) {
+				if(cell.tryLock() == false) {
+					System.out.println("Cell is already locked! Oh noes!");
+				}
+			}
+			//System.out.println("All cells locked");
+			
 			while(true) {
 				this.move();
 				try {
@@ -170,29 +173,35 @@ public class Snakes implements Runnable {
 				int direction = choices[RANDOM.nextInt(choices.length)];
 				
 				Cell next = getNewPosition(getHead(), direction);
-				if (grid[next.getX()][next.getY()] != null) {
+				if (next.isHeldByCurrentThread() || !next.tryLock()) {
 					//cannot move into newPos
 					directions.remove(direction);
 				} else {
 					isStuck = false;
 					//update all cells
-					grid[next.getX()][next.getY()] = next;
+					//grid[next.getX()][next.getY()] = next;
 					Cell temp = null;
 					for(int i=cells.length-1; i>=0; i--) {
 						temp = cells[i];
 						cells[i] = next;
 						next = temp;
-						
 					}
-					grid[temp.getX()][temp.getY()] = null;
+					
+					Cell old = grid[temp.getX()][temp.getY()];
+					if (old.isHeldByCurrentThread()) {
+						//System.out.println("Lock held by current thread: " + old);
+						old.unlock();
+					} else {
+						System.out.println("Lock not held by current thread: " + old);
+					}
 					
 					numMovements++;
+					
 					return;
 				}
 			}
 			
 			isStuck = true;
-			//System.out.println("I'm stuck!");
 		}
 		
 		public Cell getNewPosition(Cell current, int direction) {
@@ -228,17 +237,47 @@ public class Snakes implements Runnable {
 				}
 				break;
 			}
-			return new Cell(x, y);
+			return grid[x][y];
 		}
 		
 		private Cell getHead() {
 			return cells[cells.length - 1];
 		}
+	}
+	
+	private class PaintingAndStroking extends Frame {
+        int FRAME_X = 800;
+        int FRAME_Y = 770;
+        int OFFSET_X = 10;
+        int OFFSET_Y = 30;
+        int CELL_SIZE = 5;
 
-		private synchronized boolean canMove(int direction) {
-			// TODO Auto-generated method stub
-			return false;
-		}
-		
+        public PaintingAndStroking() {
+            setTitle("muthaf**king snakes on a muthaf**king plane");
+            setSize(FRAME_X, FRAME_Y);
+            setVisible(true);
+        }
+
+        public void paint(Graphics g) {
+            g.drawRect(OFFSET_X, OFFSET_Y, CELL_SIZE * width, CELL_SIZE * height);
+            int i=0;
+            for (SnakeThread snake : snakes) {
+            	i++;
+                int count = 0;
+                g.setColor(snake.color);
+                for (Cell cell : snake.cells) {
+                    if (count >= snakeLength - 1) {
+                        if(snake.isStuck) {
+                            g.setColor(new Color(200, 50, 50));
+                        }
+                        else {
+                            g.setColor(new Color(50, 50, 200));
+                        }
+                    }
+                    g.fillRect(cell.getX() * CELL_SIZE + OFFSET_X, cell.getY() * CELL_SIZE + OFFSET_Y, CELL_SIZE, CELL_SIZE);
+                    count++;
+                }
+            }
+        }
 	}
 }

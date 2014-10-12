@@ -1,5 +1,6 @@
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 
 
@@ -27,7 +28,8 @@ public class Factor implements Runnable {
         }
         
         System.out.println("Factoring " + n);
-        factorNumber(p, n);
+        //factorNumber(p, n);
+        superRunner(4, n);
 	}
 	
 	public static void superRunner(int numThreads, BigInteger n) {
@@ -77,7 +79,7 @@ public class Factor implements Runnable {
 		
 		//create threads
 		for (int i=0; i< threads.length; i++) {
-			if (i != threads.length -1) {
+			if (i != threads.length - 1) {
 				threads[i] = new FactorThread(n, start, start.add(sizePerThread));
 			} else {
 				threads[i] = new FactorThread(n, start, end);
@@ -92,7 +94,14 @@ public class Factor implements Runnable {
 		}
 		
 		//wait for threads to finish
-		waitForThreads(threads);
+		for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+		
 	}
 	
 	private String printFactors() {
@@ -111,21 +120,6 @@ public class Factor implements Runnable {
 		}
 		
 		return buffer.toString();
-	}
-	
-	/**
-	 * Blocks until all threads have finished
-	 */
-	private void waitForThreads(Thread[] threads) {
-		for (Thread thread : threads) {
-            if (thread != null) {
-                try {
-                    thread.join();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
 	}
 	
 	/**
