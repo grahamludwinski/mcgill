@@ -66,7 +66,7 @@ public class Snakes implements Runnable {
 		PaintingAndStroking paint = new PaintingAndStroking();
 		paint.repaint();
 		try {
-			Thread.sleep(10000);
+			Thread.sleep(10);
 		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -253,16 +253,14 @@ public class Snakes implements Runnable {
         int CELL_SIZE = 5;
 
         public PaintingAndStroking() {
-            setTitle("muthaf**king snakes on a muthaf**king plane");
+            setTitle("snakes on a plane");
             setSize(FRAME_X, FRAME_Y);
             setVisible(true);
         }
 
         public void paint(Graphics g) {
             g.drawRect(OFFSET_X, OFFSET_Y, CELL_SIZE * width, CELL_SIZE * height);
-            int i=0;
             for (SnakeThread snake : snakes) {
-            	i++;
                 int count = 0;
                 g.setColor(snake.color);
                 for (Cell cell : snake.cells) {

@@ -1,0 +1,6 @@
+1. 
+I used the atomic compareAndSet operation to make sure only one thread stopped at a certain splitter.  If a different thread tried to acquire the lock but failed, it chose a random direction and moved toward it.
+2. 
+My parallelization strategy was to split of the potential factors I needed to try equally amound all the threads.  Once this was done, and I had a list of primes, I ran through it with the main thread to remove any non-prime factors.
+3. 
+a value of 7 for n prevents deadlock for at least a minute. My parallelization strategy was to use a master grid where snakes would put their cells into. When a snake wanted to move, it would acquire the lock in that position, point its head at it, and then update its entire body one cell at a time. Afterwards, it would unlock the last cell that is no longer part of its body thus preventing any other snakes from cutting through another.

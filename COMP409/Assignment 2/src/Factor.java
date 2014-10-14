@@ -28,8 +28,8 @@ public class Factor implements Runnable {
         }
         
         System.out.println("Factoring " + n);
-        //factorNumber(p, n);
-        superRunner(4, n);
+        factorNumber(p, n);
+        //superRunner(4, n);
 	}
 	
 	public static void superRunner(int numThreads, BigInteger n) {
@@ -102,6 +102,12 @@ public class Factor implements Runnable {
             }
         }
 		
+		for (int i=0; i< factors.size(); i++) {
+			BigInteger factor = factors.get(i);
+			if(!factor.isProbablePrime(100)) {
+				factors.remove(i);
+			}
+		}
 	}
 	
 	private String printFactors() {
